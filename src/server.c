@@ -33,10 +33,17 @@ int log_sem_init() {
   return log_sem;
 }
 
-int repo_mem_init() {
+int repo_mem_init(int repo_sem) {
   int repo_id = shmget(ID_REPO, sizeof(REPO), 0666 | IPC_CREAT | IPC_EXCL);
   if(-1 != repo_id) {
-    // initialize shared memory
+    REPO *mem = shmat(repo_id, NULL, 0);
+    REPO repo;
+    repo.active_clients = 0;
+    repo.active_rooms   = 0;
+    repo.active_servers = 0;
+    *mem = repo;
+    shmdt(mem);
+    sem_raise(repo_sem);
   }
   else {
     repo_id = shmget(ID_REPO, 1, 0666);
@@ -58,8 +65,8 @@ int repo_sem_init() {
 
 void repo_init(int *repo_id, int *repo_sem, int *log_sem) {
   *repo_sem = repo_sem_init();
+  *repo_id  = repo_mem_init(*repo_sem);
   *log_sem  = log_sem_init();
-  *repo_id  = repo_mem_init();
 }
 
 int main(int argc, char *argv[]) {
