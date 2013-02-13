@@ -4,6 +4,22 @@
 
 #include "common.h"
 
+void sem_lower(int sem_id) {
+  struct sembuf buf;
+  buf.sem_num = sem_id;
+  buf.sem_op  = -1;
+  buf.sem_flg = 0;
+  semop(sem_id, &buf, 1);
+}
+
+void sem_raise(int sem_id) {
+  struct sembuf buf;
+  buf.sem_num = sem_id;
+  buf.sem_op  = 1;
+  buf.sem_flg = 0;
+  semop(sem_id, &buf, 1);
+}
+
 int log_sem_init() {
   int log_sem = semget(SEM_LOG, 1, 0666 | IPC_CREAT | IPC_EXCL);
   if(-1 != log_sem) {
