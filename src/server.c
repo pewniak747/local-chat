@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
+#include <sys/shm.h>
 
 #include "common.h"
 
@@ -32,6 +33,17 @@ int log_sem_init() {
   return log_sem;
 }
 
+int repo_mem_init() {
+  int repo_id = shmget(ID_REPO, sizeof(REPO), 0666 | IPC_CREAT | IPC_EXCL);
+  if(-1 != repo_id) {
+    // initialize shared memory
+  }
+  else {
+    repo_id = shmget(ID_REPO, 1, 0666);
+  }
+  return repo_id;
+}
+
 int repo_sem_init() {
   int repo_sem = semget(SEM_REPO, 1, 0666 | IPC_CREAT | IPC_EXCL);
   if(-1 != repo_sem) {
@@ -47,11 +59,12 @@ int repo_sem_init() {
 void repo_init(int *repo_id, int *repo_sem, int *log_sem) {
   *repo_sem = repo_sem_init();
   *log_sem  = log_sem_init();
+  *repo_id  = repo_mem_init();
 }
 
 int main(int argc, char *argv[]) {
   int repo_id, repo_sem, log_sem;
   repo_init(&repo_id, &repo_sem, &log_sem);
-  printf("repo sem: %d\nlog sem: %d\n", repo_sem, log_sem);
+  printf("repo sem: %d\nlog sem: %d\nrepo_id: %d\n", repo_sem, log_sem, repo_id);
   return 0;
 }
