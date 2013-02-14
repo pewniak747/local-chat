@@ -36,7 +36,7 @@ void repo_server_register(REPO *repo, int repo_sem) {
   server.client_msgid = getpid();
   server.server_msgid = 0;
   server.clients = 0;
-  repo->servers[0] = server;
+  repo->servers[repo->active_servers] = server;
   repo->active_servers++;
   repo_access_stop(repo_sem);
 }
