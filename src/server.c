@@ -103,6 +103,15 @@ void repo_init(int *repo_id, int *repo_sem, int *log_sem) {
   *log_sem  = log_sem_init();
 }
 
+void receive_server_list_requests(REPO *repo, int repo_sem) {
+  SERVER_LIST_REQUEST req;
+  int msgq_id = msgget(SERVER_LIST_MSG_KEY, 0666);
+  int result = msgrcv(msgq_id, &req, sizeof(req), SERVER_LIST, IPC_NOWAIT);
+  if(-1 != result) {
+    printf("Received server list request from client %d\n", req.client_msgid);
+  }
+}
+
 int main(int argc, char *argv[]) {
   int repo_id, repo_sem, log_sem;
   repo_init(&repo_id, &repo_sem, &log_sem);
@@ -111,6 +120,9 @@ int main(int argc, char *argv[]) {
   REPO *repo = repo_get(repo_id, repo_sem);
   repo_server_register(repo, repo_sem);
   printf("active servers: %d\n", repo->active_servers);
+  while(1) {
+    receive_server_list_requests(repo, repo_sem);
+  }
   repo_release(repo, repo_sem);
   return 0;
 }
