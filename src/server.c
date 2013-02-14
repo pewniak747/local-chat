@@ -2,6 +2,7 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
+#include <sys/msg.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -32,6 +33,8 @@ void repo_access_stop(int repo_sem) {
 
 void repo_server_register(REPO *repo, int repo_sem) {
   repo_access_start(repo_sem);
+  msgget(getpid(), 0666 | IPC_CREAT);
+  msgget(SERVER_LIST_MSG_KEY, 0666 | IPC_CREAT);
   SERVER server;
   server.client_msgid = getpid();
   server.server_msgid = 0;
