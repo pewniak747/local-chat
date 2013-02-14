@@ -7,7 +7,7 @@
 
 void sem_lower(int sem_id) {
   struct sembuf buf;
-  buf.sem_num = sem_id;
+  buf.sem_num = 0;
   buf.sem_op  = -1;
   buf.sem_flg = 0;
   semop(sem_id, &buf, 1);
@@ -15,7 +15,7 @@ void sem_lower(int sem_id) {
 
 void sem_raise(int sem_id) {
   struct sembuf buf;
-  buf.sem_num = sem_id;
+  buf.sem_num = 0;
   buf.sem_op  = 1;
   buf.sem_flg = 0;
   semop(sem_id, &buf, 1);
@@ -45,8 +45,7 @@ void repo_release(REPO *repo, int repo_sem) {
 int log_sem_init() {
   int log_sem = semget(SEM_LOG, 1, 0666 | IPC_CREAT | IPC_EXCL);
   if(-1 != log_sem) {
-    short semval[1] = { 1 };
-    semctl(log_sem, 0, SETVAL, semval);
+    semctl(log_sem, 0, SETVAL, 1);
   }
   else {
     log_sem = semget(SEM_LOG, 1, 0666);
@@ -75,8 +74,7 @@ int repo_mem_init(int repo_sem) {
 int repo_sem_init() {
   int repo_sem = semget(SEM_REPO, 1, 0666 | IPC_CREAT | IPC_EXCL);
   if(-1 != repo_sem) {
-    short semval[1] = { 0 };
-    semctl(repo_sem, 0, SETVAL, semval);
+    semctl(repo_sem, 0, SETVAL, 0);
   }
   else {
     repo_sem = semget(SEM_REPO, 1, 0666);
