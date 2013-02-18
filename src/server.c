@@ -171,7 +171,16 @@ void receive_server_list_requests(REPO *repo, int repo_sem) {
   int msgq_id = msgget(SERVER_LIST_MSG_KEY, 0666);
   int result = msgrcv(msgq_id, &req, sizeof(req), SERVER_LIST, IPC_NOWAIT);
   if(-1 != result) {
-    printf("Received server list request from client %d\n", req.client_msgid);
+    SERVER_LIST_RESPONSE response;
+    response.type = SERVER_LIST;
+    response.active_servers = repo->active_servers;
+    int i;
+    for(i = 0; i < repo->active_servers; i++) {
+      response.servers[i] = repo->servers[i].client_msgid;
+      response.clients_on_servers[i] = repo->servers[i].clients;
+    }
+    int client_msgq_id = msgget(req.client_msgid, 0666);
+    msgsnd(client_msgq_id, &response, sizeof(response), 0);
   }
 }
 
@@ -187,7 +196,7 @@ int main(int argc, char *argv[]) {
   sprintf(msg, "UP: %d, repo sem: %d log sem: %d repo_id: %d\n", getpid(), repo_sem, log_sem, repo_id);
   log_msg(msg, log_sem);
 
-  sem_raise(repo_sem);
+  repo_access_stop(repo_sem);
   repo = repo_get(repo_id, repo_sem);
   server_register(repo, repo_sem);
 
@@ -198,7 +207,9 @@ int main(int argc, char *argv[]) {
   log_msg(msg, log_sem);
 
   while(1) {
+    repo_access_start(repo_id);
     receive_server_list_requests(repo, repo_sem);
+    repo_access_stop(repo_id);
   }
 
   repo_release(repo, repo_sem, log_sem);

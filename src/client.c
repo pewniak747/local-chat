@@ -6,13 +6,17 @@
 #include "common.h"
 
 int server_list(SERVER_LIST_RESPONSE *servers) {
-  int msgq_id;
+  int msgq_id, my_msgq_id;
   msgq_id = msgget(SERVER_LIST_MSG_KEY, 0666);
   if(-1 != msgq_id) {
     SERVER_LIST_REQUEST req;
     req.type = SERVER_LIST;
     req.client_msgid = getpid();
     msgsnd(msgq_id, &req, sizeof(req), 0);
+    my_msgq_id = msgget(getpid(), 0666);
+    SERVER_LIST_RESPONSE res;
+    msgrcv(my_msgq_id, &res, sizeof(res), SERVER_LIST, 0);
+    printf("Active servers: %d\n", res.active_servers);
     return 0;
   }
   else {
