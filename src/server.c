@@ -46,7 +46,7 @@ void repo_access_stop(int repo_sem) {
   sem_raise(repo_sem);
 }
 
-void repo_server_register(REPO *repo, int repo_sem) {
+void server_register(REPO *repo, int repo_sem) {
   repo_access_start(repo_sem);
   msgget(getpid(), 0666 | IPC_CREAT);
   msgget(SERVER_LIST_MSG_KEY, 0666 | IPC_CREAT);
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
 
   sem_raise(repo_sem);
   repo = repo_get(repo_id, repo_sem);
-  repo_server_register(repo, repo_sem);
+  server_register(repo, repo_sem);
 
   signal(SIGINT, server_exit);
   signal(SIGTERM, server_exit);
