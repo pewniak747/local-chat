@@ -13,7 +13,7 @@ int server_list(SERVER_LIST_RESPONSE *servers) {
     req.type = SERVER_LIST;
     req.client_msgid = getpid();
     msgsnd(msgq_id, &req, sizeof(req), 0);
-    my_msgq_id = msgget(getpid(), 0666);
+    my_msgq_id = msgget(getpid(), 0666 | IPC_CREAT | IPC_EXCL);
     SERVER_LIST_RESPONSE res;
     msgrcv(my_msgq_id, &res, sizeof(res), SERVER_LIST, 0);
     printf("Active servers: %d\n", res.active_servers);
