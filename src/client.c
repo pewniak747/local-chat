@@ -17,6 +17,10 @@ int server_list(SERVER_LIST_RESPONSE *servers) {
     SERVER_LIST_RESPONSE res;
     msgrcv(my_msgq_id, &res, sizeof(res), SERVER_LIST, 0);
     printf("Active servers: %d\n", res.active_servers);
+    int i;
+    for(i = 0; i < res.active_servers; i++) {
+      printf("Server %d: %d users online\n", res.servers[i], res.clients_on_servers[i]);
+    }
     return 0;
   }
   else {
