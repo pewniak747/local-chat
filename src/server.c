@@ -8,8 +8,11 @@
 #include <string.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "common.h"
+
+#define INFINITY INT_MAX
 
 int repo_id, repo_sem, log_sem;
 REPO *repo;
@@ -46,6 +49,18 @@ void repo_access_stop(int repo_sem) {
   sem_raise(repo_sem);
 }
 
+int server_compare(const void *s1, const void *s2) {
+  int s1id = ((SERVER*)s1)->client_msgid;
+  int s2id = ((SERVER*)s2)->client_msgid;
+  if(s1id > s2id) return 1;
+  if(s2id > s1id) return -1;
+  return 0;
+}
+
+void server_sort(REPO *repo) {
+  qsort(repo->servers, MAX_SERVER_NUM, sizeof(SERVER), server_compare);
+}
+
 void server_register(REPO *repo, int repo_sem) {
   repo_access_start(repo_sem);
   msgget(getpid(), 0666 | IPC_CREAT);
@@ -56,6 +71,7 @@ void server_register(REPO *repo, int repo_sem) {
   server.clients = 0;
   repo->servers[repo->active_servers] = server;
   repo->active_servers++;
+  server_sort(repo);
   repo_access_stop(repo_sem);
 }
 
@@ -87,6 +103,14 @@ void repo_release(REPO *repo, int repo_sem, int log_sem) {
     int msgq_id = msgget(getpid(), 0666);
     msgctl(msgq_id, IPC_RMID, 0);
     repo->active_servers--;
+    int i;
+    for(i = 0; i < MAX_SERVER_NUM; i++) {
+      if(repo->servers[i].client_msgid == getpid())  {
+        repo->servers[i].client_msgid = INFINITY;
+        break;
+      }
+    }
+    server_sort(repo);
     shmdt(repo);
     repo_access_stop(repo_sem);
   }
@@ -111,6 +135,10 @@ int repo_mem_init(int repo_sem) {
     repo.active_clients = 0;
     repo.active_rooms   = 0;
     repo.active_servers = 0;
+    int i;
+    for(i = 0; i < MAX_SERVER_NUM; i++) {
+      repo.servers[i].client_msgid = INFINITY;
+    }
     *mem = repo;
     shmdt(mem);
     sem_raise(repo_sem);
