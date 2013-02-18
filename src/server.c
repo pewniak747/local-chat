@@ -68,11 +68,28 @@ REPO *repo_get(int repo_id, int repo_sem) {
 
 void repo_release(REPO *repo, int repo_sem, int log_sem) {
   repo_access_start(repo_sem);
-  shmdt(repo);
+
   char msg[100];
   sprintf(msg, "DOWN: %d\n", getpid());
   log_msg(msg, log_sem);
-  repo_access_stop(repo_sem);
+
+  if(repo->active_servers == 1) {
+    int msgq_id = msgget(SERVER_LIST_MSG_KEY, 0666);
+    int repo_id = shmget(ID_REPO, sizeof(REPO), 0666);
+    msgctl(msgq_id, IPC_RMID, 0);
+    msgq_id = msgget(getpid(), 0666);
+    msgctl(msgq_id, IPC_RMID, 0);
+    semctl(repo_sem, IPC_RMID, 0);
+    semctl(log_sem, IPC_RMID, 0);
+    shmctl(repo_id, IPC_RMID, 0);
+  }
+  else {
+    int msgq_id = msgget(getpid(), 0666);
+    msgctl(msgq_id, IPC_RMID, 0);
+    repo->active_servers--;
+    shmdt(repo);
+    repo_access_stop(repo_sem);
+  }
 }
 
 int log_sem_init() {
