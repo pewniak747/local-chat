@@ -4,6 +4,8 @@
 #include <sys/shm.h>
 #include <sys/msg.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 
 #include "common.h"
 
@@ -112,14 +114,29 @@ void receive_server_list_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void log_msg(const char message[], int log_sem) {
+  sem_lower(log_sem);
+  int fd = open("/tmp/czat.log", O_WRONLY|O_CREAT|O_APPEND);
+  write(fd, message, strlen(message));
+  close(fd);
+  sem_raise(log_sem);
+}
+
 int main(int argc, char *argv[]) {
   int repo_id, repo_sem, log_sem;
   repo_init(&repo_id, &repo_sem, &log_sem);
-  printf("repo sem: %d\nlog sem: %d\nrepo_id: %d\n", repo_sem, log_sem, repo_id);
+
+  char msg[100];
+  sprintf(msg, "UP: %d, repo sem: %d log sem: %d repo_id: %d\n", getpid(), repo_sem, log_sem, repo_id);
+  log_msg(msg, log_sem);
+
   sem_raise(repo_sem);
   REPO *repo = repo_get(repo_id, repo_sem);
   repo_server_register(repo, repo_sem);
-  printf("active servers: %d\n", repo->active_servers);
+
+  sprintf(msg, "ALIVE: %d\n", getpid());
+  log_msg(msg, log_sem);
+
   repo_release(repo, repo_sem);
 
   while(1) {
