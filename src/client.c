@@ -13,7 +13,7 @@ int server_list(SERVER_LIST_RESPONSE *servers) {
     req.type = SERVER_LIST;
     req.client_msgid = getpid();
     msgsnd(msgq_id, &req, sizeof(req), 0);
-    my_msgq_id = msgget(getpid(), 0666 | IPC_CREAT | IPC_EXCL);
+    my_msgq_id = msgget(getpid(), 0666 | IPC_CREAT);
     SERVER_LIST_RESPONSE res;
     msgrcv(my_msgq_id, &res, sizeof(res), SERVER_LIST, 0);
     printf("Active servers: %d\n", res.active_servers);
@@ -28,7 +28,15 @@ int server_list(SERVER_LIST_RESPONSE *servers) {
   }
 }
 
+void client_release() {
+  int msgq_id = msgget(getpid(), 0666);
+  msgctl(msgq_id, IPC_RMID, 0);
+}
+
 int main(int argc, char *argv[]) {
+  signal(SIGINT, client_release);
+  signal(SIGTERM, client_release);
+
   printf("WELCOME TO LOCALCHAT\n");
   SERVER_LIST_RESPONSE servers;
   int server_status = server_list(&servers);
@@ -37,5 +45,7 @@ int main(int argc, char *argv[]) {
     printf("Exiting...\n");
     exit(1);
   }
+
+  client_release();
   return 0;
 }
