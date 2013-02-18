@@ -5,24 +5,29 @@
 
 #include "common.h"
 
-SERVER_LIST_RESPONSE server_list() {
+int server_list(SERVER_LIST_RESPONSE *servers) {
   int msgq_id;
   msgq_id = msgget(SERVER_LIST_MSG_KEY, 0666);
-  if(-1 == msgq_id) {
-    printf("Sorry, no server online...\n");
-    printf("Exiting...\n");
-    exit(1);
-  }
-  else {
+  if(-1 != msgq_id) {
     SERVER_LIST_REQUEST req;
     req.type = SERVER_LIST;
     req.client_msgid = getpid();
     msgsnd(msgq_id, &req, sizeof(req), 0);
+    return 0;
+  }
+  else {
+    return -1;
   }
 }
 
 int main(int argc, char *argv[]) {
   printf("WELCOME TO LOCALCHAT\n");
-  SERVER_LIST_RESPONSE servers = server_list();
+  SERVER_LIST_RESPONSE servers;
+  int server_status = server_list(&servers);
+  if(-1 == server_status) {
+    printf("Sorry, no server online...\n");
+    printf("Exiting...\n");
+    exit(1);
+  }
   return 0;
 }
