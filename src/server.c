@@ -120,9 +120,10 @@ int main(int argc, char *argv[]) {
   REPO *repo = repo_get(repo_id, repo_sem);
   repo_server_register(repo, repo_sem);
   printf("active servers: %d\n", repo->active_servers);
+  repo_release(repo, repo_sem);
+
   while(1) {
     receive_server_list_requests(repo, repo_sem);
   }
-  repo_release(repo, repo_sem);
   return 0;
 }
