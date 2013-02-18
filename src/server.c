@@ -6,8 +6,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <signal.h>
+#include <stdlib.h>
 
 #include "common.h"
+
+int repo_id, repo_sem, log_sem;
+REPO *repo;
 
 void sem_lower(int sem_id) {
   struct sembuf buf;
@@ -23,6 +28,14 @@ void sem_raise(int sem_id) {
   buf.sem_op  = 1;
   buf.sem_flg = 0;
   semop(sem_id, &buf, 1);
+}
+
+void log_msg(const char message[], int log_sem) {
+  sem_lower(log_sem);
+  int fd = open("/tmp/czat.log", O_WRONLY|O_CREAT|O_APPEND);
+  write(fd, message, strlen(message));
+  close(fd);
+  sem_raise(log_sem);
 }
 
 void repo_access_start(int repo_sem) {
@@ -53,9 +66,12 @@ REPO *repo_get(int repo_id, int repo_sem) {
   return mem;
 }
 
-void repo_release(REPO *repo, int repo_sem) {
+void repo_release(REPO *repo, int repo_sem, int log_sem) {
   repo_access_start(repo_sem);
   shmdt(repo);
+  char msg[100];
+  sprintf(msg, "DOWN: %d\n", getpid());
+  log_msg(msg, log_sem);
   repo_access_stop(repo_sem);
 }
 
@@ -114,16 +130,12 @@ void receive_server_list_requests(REPO *repo, int repo_sem) {
   }
 }
 
-void log_msg(const char message[], int log_sem) {
-  sem_lower(log_sem);
-  int fd = open("/tmp/czat.log", O_WRONLY|O_CREAT|O_APPEND);
-  write(fd, message, strlen(message));
-  close(fd);
-  sem_raise(log_sem);
+void server_exit() {
+  repo_release(repo, repo_sem, log_sem);
+  exit(1);
 }
 
 int main(int argc, char *argv[]) {
-  int repo_id, repo_sem, log_sem;
   repo_init(&repo_id, &repo_sem, &log_sem);
 
   char msg[100];
@@ -131,16 +143,20 @@ int main(int argc, char *argv[]) {
   log_msg(msg, log_sem);
 
   sem_raise(repo_sem);
-  REPO *repo = repo_get(repo_id, repo_sem);
+  repo = repo_get(repo_id, repo_sem);
   repo_server_register(repo, repo_sem);
+
+  signal(SIGINT, server_exit);
+  signal(SIGTERM, server_exit);
 
   sprintf(msg, "ALIVE: %d\n", getpid());
   log_msg(msg, log_sem);
 
-  repo_release(repo, repo_sem);
-
   while(1) {
     receive_server_list_requests(repo, repo_sem);
   }
+
+  repo_release(repo, repo_sem, log_sem);
+
   return 0;
 }
