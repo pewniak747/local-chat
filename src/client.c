@@ -52,6 +52,20 @@ void client_exit() {
   exit(0);
 }
 
+int str_equal(char *a, char *b) {
+  if(0 == strcmp(a, b))
+    return 1;
+  else
+    return 0;
+}
+
+int str_startswith(char *a, char *b) {
+  if(a == strstr(a, b))
+    return 1;
+  else
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
   signal(SIGINT, client_release);
   signal(SIGTERM, client_release);
@@ -70,18 +84,18 @@ int main(int argc, char *argv[]) {
   while(1) {
     printf("> ");
     scanf("%s", command);
-    if(command == strstr(command, "/")) {
-      if(0 == strcmp(command, "/help")) {
+    if(str_startswith(command, "/")) {
+      if(str_equal(command, "/help")) {
         client_help();
       }
-      else if(0 == strcmp(command, "/servers")) {
+      else if(str_equal(command, "/servers")) {
         client_list_servers();
       }
-      else if(0 == strcmp(command, "/exit")) {
+      else if(str_equal(command, "/exit")) {
         client_exit();
       }
       else {
-        printf("unknown command\n");
+        printf("Unknown command!\n");
         client_help();
       }
     }
