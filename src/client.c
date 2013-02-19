@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/msg.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "common.h"
 
@@ -33,6 +34,18 @@ void client_release() {
   msgctl(msgq_id, IPC_RMID, 0);
 }
 
+void client_help() {
+  printf("LOCALCHAT MANUAL:\n");
+  printf("/help to show these instructions\n");
+  printf("/exit to quit\n");
+}
+
+void client_exit() {
+  client_release();
+  printf("Exiting...\n");
+  exit(0);
+}
+
 int main(int argc, char *argv[]) {
   signal(SIGINT, client_release);
   signal(SIGTERM, client_release);
@@ -44,6 +57,19 @@ int main(int argc, char *argv[]) {
     printf("Sorry, no server online...\n");
     printf("Exiting...\n");
     exit(1);
+  }
+
+  char *command = malloc(100*sizeof(char));
+
+  while(1) {
+    printf("> ");
+    scanf("%s", command);
+    if(0 == strcmp(command, "/help")) {
+      client_help();
+    }
+    if(0 == strcmp(command, "/exit")) {
+      client_exit();
+    }
   }
 
   client_release();
