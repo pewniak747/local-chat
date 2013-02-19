@@ -70,14 +70,23 @@ int main(int argc, char *argv[]) {
   while(1) {
     printf("> ");
     scanf("%s", command);
-    if(0 == strcmp(command, "/help")) {
-      client_help();
+    if(command == strstr(command, "/")) {
+      if(0 == strcmp(command, "/help")) {
+        client_help();
+      }
+      else if(0 == strcmp(command, "/servers")) {
+        client_list_servers();
+      }
+      else if(0 == strcmp(command, "/exit")) {
+        client_exit();
+      }
+      else {
+        printf("unknown command\n");
+        client_help();
+      }
     }
-    if(0 == strcmp(command, "/servers")) {
-      client_list_servers();
-    }
-    if(0 == strcmp(command, "/exit")) {
-      client_exit();
+    else {
+      // send message
     }
   }
 
