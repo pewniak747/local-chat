@@ -37,7 +37,13 @@ void client_release() {
 void client_help() {
   printf("LOCALCHAT MANUAL:\n");
   printf("/help to show these instructions\n");
+  printf("/servers to list available servers\n");
   printf("/exit to quit\n");
+}
+
+void client_list_servers() {
+  SERVER_LIST_RESPONSE servers;
+  server_list(&servers);
 }
 
 void client_exit() {
@@ -66,6 +72,9 @@ int main(int argc, char *argv[]) {
     scanf("%s", command);
     if(0 == strcmp(command, "/help")) {
       client_help();
+    }
+    if(0 == strcmp(command, "/servers")) {
+      client_list_servers();
     }
     if(0 == strcmp(command, "/exit")) {
       client_exit();
