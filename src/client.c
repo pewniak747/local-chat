@@ -98,7 +98,12 @@ void client_connect(char *command) {
       else if(RESPONSE_CLIENT_EXISTS == response.status) {
         printf("Client with name %s already exists!\n", client_name);
       }
-      printf("received response: %d\n", response.status);
+      else if(RESPONSE_CLIENT_REGISTERED == response.status) {
+        printf("Logged in successfully!\n");
+      }
+      else {
+        printf("ERROR!\n");
+      }
     }
     else {
       printf("Server %s does not exist!\n", server_id);

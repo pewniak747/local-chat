@@ -214,7 +214,16 @@ void receive_login_requests(REPO *repo, int repo_sem) {
       response.status = RESPONSE_CLIENT_EXISTS;
     }
     else {
-      response.status = RESPONSE_ERROR;
+      CLIENT *new_client = &repo->clients[repo->active_clients];
+      strcpy(new_client->name, request.client_name);
+      new_client->server_id = getpid();
+      strcpy(new_client->room, "");
+      repo->active_clients++;
+      me->clients++;
+      char msg[100];
+      sprintf(msg, "LOGGED_IN@%d: %s\n", getpid(), request.client_name);
+      log_msg(msg, log_sem);
+      response.status = RESPONSE_CLIENT_REGISTERED;
     }
     int client_msgq_id = msgget(request.client_msgid, 0666);
     msgsnd(client_msgq_id, &response, sizeof(response), 0);
