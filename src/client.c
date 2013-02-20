@@ -115,6 +115,14 @@ int client_connect(char *command) {
 }
 
 void client_disconnect(int *server_id) {
+  int server_msgq = server_queue(*server_id);
+  if(-1 != server_msgq) {
+    CLIENT_REQUEST request;
+    request.type = LOGOUT;
+    request.client_msgid = getpid();
+    //strcpy(request.client_name, client_name);
+    msgsnd(server_msgq, &request, sizeof(request), 0);
+  }
   *server_id = 0;
   printf("Disconnected from server.\n");
 }
