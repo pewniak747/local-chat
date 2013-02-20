@@ -8,8 +8,8 @@
 #define SEM_LOG 80777
 #define SERVER_LIST_MSG_KEY 8168008
 // FIXME: changed parameters to avoid system msg limit overflow
-#define MAX_SERVER_NUM 5
-#define SERVER_CAPACITY 10
+#define MAX_SERVER_NUM 3
+#define SERVER_CAPACITY 20
 #define MAX_CLIENTS MAX_SERVER_NUM*SERVER_CAPACITY
 #define MAX_NAME_SIZE 20
 #define MAX_MSG_SIZE 1024
