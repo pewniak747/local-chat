@@ -39,6 +39,7 @@ void client_help() {
   printf("/help to show these instructions\n");
   printf("/servers to list available servers\n");
   printf("/connect <server_id> <login> to login on server\n");
+  printf("/disconnect to disconnect from a server\n");
   printf("/exit to quit\n");
 }
 
@@ -113,6 +114,11 @@ int client_connect(char *command) {
   return -1;
 }
 
+void client_disconnect(int *server_id) {
+  *server_id = 0;
+  printf("Disconnected from server.\n");
+}
+
 void client_exit() {
   client_release();
   printf("Exiting...\n");
@@ -161,6 +167,12 @@ int main(int argc, char *argv[]) {
       }
       else if(str_equal(command, "/exit")) {
         client_exit();
+      }
+      else if(str_equal(command, "/disconnect")) {
+        if(current_server > 0)
+          client_disconnect(&current_server);
+        else
+          printf("You are not connected to a server!\n");
       }
       else if(str_startswith(command, "/connect")) {
         if(current_server > 0)
