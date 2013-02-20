@@ -95,6 +95,16 @@ void client_sort(REPO *repo) {
   qsort(repo->clients, MAX_CLIENTS, sizeof(CLIENT), client_compare);
 }
 
+ROOM* room_get(REPO *repo, char *name) {
+  int i;
+  for(i = 0; i < MAX_CLIENTS; i++) {
+    if(0 == strcmp(repo->rooms[i].name, name))  {
+      return &repo->rooms[i];
+    }
+  }
+  return NULL;
+}
+
 CLIENT* client_get(REPO *repo, char *name) {
   int i;
   for(i = 0; i < MAX_CLIENTS; i++) {
@@ -229,11 +239,13 @@ void receive_login_requests(REPO *repo, int repo_sem) {
     }
     else {
       CLIENT *new_client = &repo->clients[repo->active_clients];
+      ROOM *room = room_get(repo, "");
       strcpy(new_client->name, request.client_name);
       new_client->server_id = getpid();
       strcpy(new_client->room, "");
       repo->active_clients++;
       me->clients++;
+      room->clients++;
       client_sort(repo);
       char msg[100];
       sprintf(msg, "LOGGED_IN@%d: %s\n", getpid(), request.client_name);
