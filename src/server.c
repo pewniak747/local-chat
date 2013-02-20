@@ -75,6 +75,16 @@ void server_register(REPO *repo, int repo_sem) {
   repo_access_stop(repo_sem);
 }
 
+SERVER* server_get(REPO *repo) {
+  int i;
+  for(i = 0; i < MAX_SERVER_NUM; i++) {
+    if(repo->servers[i].client_msgid == getpid())  {
+      return &repo->servers[i];
+    }
+  }
+  return NULL;
+}
+
 REPO *repo_get(int repo_id, int repo_sem) {
   repo_access_start(repo_sem);
   REPO *mem = shmat(repo_id, NULL, 0);
@@ -103,13 +113,8 @@ void repo_release(REPO *repo, int repo_sem, int log_sem) {
     int msgq_id = msgget(getpid(), 0666);
     msgctl(msgq_id, IPC_RMID, 0);
     repo->active_servers--;
-    int i;
-    for(i = 0; i < MAX_SERVER_NUM; i++) {
-      if(repo->servers[i].client_msgid == getpid())  {
-        repo->servers[i].client_msgid = INFINITY;
-        break;
-      }
-    }
+    SERVER *me = server_get(repo);
+    me->client_msgid = INFINITY;
     server_sort(repo);
     shmdt(repo);
     repo_access_stop(repo_sem);
@@ -191,14 +196,7 @@ void receive_login_requests(REPO *repo, int repo_sem) {
   if(-1 != result) {
     STATUS_RESPONSE response;
     response.type = STATUS;
-    SERVER *me;
-    int i;
-    for(i = 0; i < MAX_SERVER_NUM; i++) {
-      if(repo->servers[i].client_msgid == getpid())  {
-        me = &repo->servers[i];
-        break;
-      }
-    }
+    SERVER *me = server_get(repo);
     if(me->clients == SERVER_CAPACITY) {
       response.status = 503;
     }
