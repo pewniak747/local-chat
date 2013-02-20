@@ -92,6 +92,9 @@ void client_connect(char *command) {
       msgsnd(server_msgq, &request, sizeof(request), 0);
       STATUS_RESPONSE response;
       msgrcv(client_queue(), &response, sizeof(response), STATUS, 0);
+      if(RESPONSE_SERVER_FULL == response.status) {
+        printf("Server full!\n");
+      }
       printf("received response: %d\n", response.status);
     }
     else {

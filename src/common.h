@@ -14,6 +14,9 @@
 #define MAX_MSG_SIZE 1024
 #define TIMEOUT 5
 
+#define RESPONSE_SERVER_FULL 503
+#define RESPONSE_ERROR 500
+
 typedef enum {
   SERVER_LIST = 1
     ,ROOM_LIST

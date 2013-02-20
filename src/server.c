@@ -198,10 +198,10 @@ void receive_login_requests(REPO *repo, int repo_sem) {
     response.type = STATUS;
     SERVER *me = server_get(repo);
     if(me->clients == SERVER_CAPACITY) {
-      response.status = 503;
+      response.status = RESPONSE_SERVER_FULL;
     }
     else {
-      response.status = 500;
+      response.status = RESPONSE_ERROR;
     }
     int client_msgq_id = msgget(request.client_msgid, 0666);
     msgsnd(client_msgq_id, &response, sizeof(response), 0);
