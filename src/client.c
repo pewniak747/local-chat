@@ -102,7 +102,7 @@ void client_connect(char *command, int *current_server, char *current_client) {
       else if(RESPONSE_CLIENT_REGISTERED == response.status) {
         printf("Logged in successfully!\n");
         *current_server = server_key;
-        strcpy(client_name, current_client);
+        strcpy(current_client, client_name);
       }
       else {
         printf("ERROR!\n");
