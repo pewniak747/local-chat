@@ -39,6 +39,7 @@ void client_help() {
   printf("/help to show these instructions\n");
   printf("/servers to list available servers\n");
   printf("/connect <server_id> <login> to login on server\n");
+  printf("/join <channel> to join channel\n");
   printf("/disconnect to disconnect from a server\n");
   printf("/exit to quit\n");
 }
@@ -112,6 +113,12 @@ void client_connect(char *command, int *current_server, char *current_client) {
       printf("Server %s does not exist!\n", server_id);
     }
   }
+}
+
+void client_change_room(char *command, int *current_server, char *current_client) {
+  char room_id[MAX_NAME_SIZE];
+  strcpy(room_id, command);
+  printf("Joining room %s...\n", room_id);
 }
 
 void client_disconnect(int *server_id, char *current_client) {
@@ -188,7 +195,13 @@ int main(int argc, char *argv[]) {
         if(current_server > 0)
           printf("You are already connected to a server!\n");
         else
-          client_connect(command+strlen("/connect"), &current_server, current_client);
+          client_connect(command+strlen("/connect "), &current_server, current_client);
+      }
+      else if(str_startswith(command, "/join")) {
+        if(current_server > 0)
+          client_change_room(command+strlen("/join"), &current_server, current_client);
+        else
+          printf("You are not connected to a server!\n");
       }
       else {
         printf("Unknown command!\n");
