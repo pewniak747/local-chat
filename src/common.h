@@ -15,6 +15,7 @@
 #define TIMEOUT 5
 
 #define RESPONSE_SERVER_FULL 503
+#define RESPONSE_CLIENT_EXISTS 409
 #define RESPONSE_ERROR 500
 
 typedef enum {

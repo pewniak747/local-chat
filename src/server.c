@@ -85,7 +85,17 @@ SERVER* server_get(REPO *repo) {
   return NULL;
 }
 
-REPO *repo_get(int repo_id, int repo_sem) {
+CLIENT* client_get(REPO *repo, char *name) {
+  int i;
+  for(i = 0; i < MAX_CLIENTS; i++) {
+    if(0 == strcmp(repo->clients[i].name, name))  {
+      return &repo->clients[i];
+    }
+  }
+  return NULL;
+}
+
+REPO* repo_get(int repo_id, int repo_sem) {
   repo_access_start(repo_sem);
   REPO *mem = shmat(repo_id, NULL, 0);
   repo_access_stop(repo_sem);
@@ -199,6 +209,9 @@ void receive_login_requests(REPO *repo, int repo_sem) {
     SERVER *me = server_get(repo);
     if(me->clients == SERVER_CAPACITY) {
       response.status = RESPONSE_SERVER_FULL;
+    }
+    else if(NULL != client_get(repo, request.client_name)) {
+      response.status = RESPONSE_CLIENT_EXISTS;
     }
     else {
       response.status = RESPONSE_ERROR;

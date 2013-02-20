@@ -95,6 +95,9 @@ void client_connect(char *command) {
       if(RESPONSE_SERVER_FULL == response.status) {
         printf("Server full!\n");
       }
+      else if(RESPONSE_CLIENT_EXISTS == response.status) {
+        printf("Client with name %s already exists!\n", client_name);
+      }
       printf("received response: %d\n", response.status);
     }
     else {
