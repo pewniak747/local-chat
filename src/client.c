@@ -55,7 +55,7 @@ int client_queue() {
   return msgget(getpid(), 0666 | IPC_CREAT);
 }
 
-void client_connect(char *command) {
+int client_connect(char *command) {
   int i = 0;
   char server_id[100], client_name[MAX_NAME_SIZE];
   int server_id_size = 0, client_id_size = 0;
@@ -100,6 +100,7 @@ void client_connect(char *command) {
       }
       else if(RESPONSE_CLIENT_REGISTERED == response.status) {
         printf("Logged in successfully!\n");
+        return server_key;
       }
       else {
         printf("ERROR!\n");
@@ -109,6 +110,7 @@ void client_connect(char *command) {
       printf("Server %s does not exist!\n", server_id);
     }
   }
+  return -1;
 }
 
 void client_exit() {
@@ -132,6 +134,7 @@ int str_startswith(char *a, char *b) {
 }
 
 int main(int argc, char *argv[]) {
+  int current_server;
   signal(SIGINT, client_release);
   signal(SIGTERM, client_release);
 
@@ -160,7 +163,10 @@ int main(int argc, char *argv[]) {
         client_exit();
       }
       else if(str_startswith(command, "/connect")) {
-        client_connect(command+strlen("/connect"));
+        if(current_server > 0)
+          printf("You are already connected to a server!\n");
+        else
+          current_server = client_connect(command+strlen("/connect"));
       }
       else {
         printf("Unknown command!\n");
