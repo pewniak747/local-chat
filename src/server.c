@@ -184,6 +184,19 @@ void receive_server_list_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void receive_login_requests(REPO *repo) {
+  CLIENT_REQUEST request;
+  int msgq_id = msgget(getpid(), 0666);
+  int result = msgrcv(msgq_id, &request, sizeof(request), LOGIN, IPC_NOWAIT);
+  if(-1 != result) {
+    STATUS_RESPONSE response;
+    response.type = STATUS;
+    response.status = 1337;
+    int client_msgq_id = msgget(request.client_msgid, 0666);
+    msgsnd(client_msgq_id, &response, sizeof(response), 0);
+  }
+}
+
 void server_exit() {
   repo_release(repo, repo_sem, log_sem);
   exit(1);
@@ -209,6 +222,7 @@ int main(int argc, char *argv[]) {
   while(1) {
     repo_access_start(repo_id);
     receive_server_list_requests(repo, repo_sem);
+    receive_login_requests(repo);
     repo_access_stop(repo_id);
   }
 

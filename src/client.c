@@ -47,6 +47,14 @@ void client_list_servers() {
   server_list(&servers);
 }
 
+int server_queue(int server_key) {
+  return msgget(server_key, 0666);
+}
+
+int client_queue() {
+  return msgget(getpid(), 0666 | IPC_CREAT);
+}
+
 void client_connect(char *command) {
   int i = 0;
   char server_id[100], client_name[MAX_NAME_SIZE];
@@ -73,7 +81,22 @@ void client_connect(char *command) {
     printf("/connect <server_id> <login> to login on server\n");
   }
   else {
-    printf("Attempting client %s connection to server %s\n", client_name, server_id);
+    printf("Connecting to %s as %s...\n", server_id, client_name);
+    int server_key = atoi(server_id);
+    int server_msgq = server_queue(server_key);
+    if(-1 != server_msgq) {
+      CLIENT_REQUEST request;
+      request.type = LOGIN;
+      request.client_msgid = getpid();
+      strcpy(request.client_name, client_name);
+      msgsnd(server_msgq, &request, sizeof(request), 0);
+      STATUS_RESPONSE response;
+      msgrcv(client_queue(), &response, sizeof(response), STATUS, 0);
+      printf("received response: %d\n", response.status);
+    }
+    else {
+      printf("Server %s does not exist!\n", server_id);
+    }
   }
 }
 
