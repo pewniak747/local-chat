@@ -80,19 +80,19 @@ void client_connect(char *command, int *current_server, char *current_client) {
   int i = 0;
   char server_id[100], client_name[MAX_NAME_SIZE];
   int server_id_size = 0, client_id_size = 0;
-  for(i; i < strlen(command); i++) {
+  for(; i < strlen(command); i++) {
     if(' ' != command[i]) break;
   }
-  for(i; i < strlen(command); i++) {
+  for(; i < strlen(command); i++) {
     if(' ' == command[i]) break;
     server_id[server_id_size] = command[i];
     server_id_size++;
   }
   server_id[server_id_size] = '\0';
-  for(i; i < strlen(command); i++) {
+  for(; i < strlen(command); i++) {
     if(' ' != command[i]) break;
   }
-  for(i; i < strlen(command); i++) {
+  for(; i < strlen(command); i++) {
     client_name[client_id_size] = command[i];
     client_id_size++;
   }
