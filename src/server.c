@@ -164,6 +164,10 @@ int repo_mem_init(int repo_sem) {
     for(i = 0; i < MAX_SERVER_NUM; i++) {
       repo.servers[i].client_msgid = INFINITY;
     }
+    for(i = 0; i < MAX_CLIENTS; i++) {
+      strcpy(repo.clients[i].name, "");
+      strcpy(repo.rooms[i].name, "");
+    }
     *mem = repo;
     shmdt(mem);
     sem_raise(repo_sem);
