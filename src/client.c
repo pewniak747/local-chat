@@ -39,6 +39,7 @@ void client_help() {
   printf("/help to show these instructions\n");
   printf("/servers to list available servers\n");
   printf("/connect <server_id> <login> to login on server\n");
+  printf("/channels to list active channels\n");
   printf("/join <channel> to join channel\n");
   printf("/disconnect to disconnect from a server\n");
   printf("/exit to quit\n");
@@ -55,6 +56,24 @@ int server_queue(int server_key) {
 
 int client_queue() {
   return msgget(getpid(), 0666 | IPC_CREAT);
+}
+
+void client_list_rooms(int *current_server, char *current_client) {
+  int server_msgq = server_queue(*current_server);
+  if(-1 != server_msgq) {
+    CLIENT_REQUEST request;
+    request.type = ROOM_LIST;
+    request.client_msgid = getpid();
+    strcpy(request.client_name, current_client);
+    msgsnd(server_msgq, &request, sizeof(request), 0);
+    ROOM_LIST_RESPONSE response;
+    msgrcv(client_queue(), &response, sizeof(response), ROOM_LIST, 0);
+    printf("%d channels available\n", response.active_rooms);
+    int i;
+    for(i = 0; i < response.active_rooms; i++) {
+      printf("Channel \"%s\": %d users chatting\n", response.rooms[i].name, response.rooms[i].clients);
+    }
+  }
 }
 
 void client_connect(char *command, int *current_server, char *current_client) {
@@ -217,6 +236,12 @@ int main(int argc, char *argv[]) {
       else if(str_startswith(command, "/join ")) {
         if(current_server > 0)
           client_change_room(command+strlen("/join "), &current_server, current_client);
+        else
+          printf("You are not connected to a server!\n");
+      }
+      else if(str_equal(command, "/channels")) {
+        if(current_server > 0)
+          client_list_rooms(&current_server, current_client);
         else
           printf("You are not connected to a server!\n");
       }

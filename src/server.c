@@ -305,6 +305,20 @@ void receive_change_room_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void receive_list_room_requests(REPO *repo, int repo_sem) {
+  CLIENT_REQUEST request;
+  int msgq_id = msgget(getpid(), 0666);
+  int result = msgrcv(msgq_id, &request, sizeof(request), ROOM_LIST, IPC_NOWAIT);
+  if(-1 != result) {
+    ROOM_LIST_RESPONSE response;
+    response.type = ROOM_LIST;
+    response.active_rooms = repo->active_rooms;
+    memcpy(&response.rooms, repo->rooms, MAX_CLIENTS*sizeof(ROOM));
+    int client_msgq_id = msgget(request.client_msgid, 0666);
+    msgsnd(client_msgq_id, &response, sizeof(response), 0);
+  }
+}
+
 void receive_logout_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
@@ -353,6 +367,7 @@ int main(int argc, char *argv[]) {
     receive_login_requests(repo, repo_sem);
     receive_logout_requests(repo, repo_sem);
     receive_change_room_requests(repo, repo_sem);
+    receive_list_room_requests(repo, repo_sem);
     repo_access_stop(repo_sem);
   }
 
