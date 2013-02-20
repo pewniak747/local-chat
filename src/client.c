@@ -56,7 +56,7 @@ int client_queue() {
   return msgget(getpid(), 0666 | IPC_CREAT);
 }
 
-int client_connect(char *command) {
+void client_connect(char *command, int *current_server, char *current_client) {
   int i = 0;
   char server_id[100], client_name[MAX_NAME_SIZE];
   int server_id_size = 0, client_id_size = 0;
@@ -101,7 +101,8 @@ int client_connect(char *command) {
       }
       else if(RESPONSE_CLIENT_REGISTERED == response.status) {
         printf("Logged in successfully!\n");
-        return server_key;
+        *current_server = server_key;
+        strcpy(client_name, current_client);
       }
       else {
         printf("ERROR!\n");
@@ -111,20 +112,19 @@ int client_connect(char *command) {
       printf("Server %s does not exist!\n", server_id);
     }
   }
-  return -1;
 }
 
-void client_disconnect(int *server_id) {
+void client_disconnect(int *server_id, char *current_client) {
   int server_msgq = server_queue(*server_id);
   if(-1 != server_msgq) {
     CLIENT_REQUEST request;
     request.type = LOGOUT;
     request.client_msgid = getpid();
-    //strcpy(request.client_name, client_name);
+    strcpy(request.client_name, current_client);
     msgsnd(server_msgq, &request, sizeof(request), 0);
+    *server_id = 0;
+    printf("Disconnected from server.\n");
   }
-  *server_id = 0;
-  printf("Disconnected from server.\n");
 }
 
 void client_exit() {
@@ -149,6 +149,8 @@ int str_startswith(char *a, char *b) {
 
 int main(int argc, char *argv[]) {
   int current_server;
+  char current_client[MAX_NAME_SIZE];
+
   signal(SIGINT, client_release);
   signal(SIGTERM, client_release);
 
@@ -178,7 +180,7 @@ int main(int argc, char *argv[]) {
       }
       else if(str_equal(command, "/disconnect")) {
         if(current_server > 0)
-          client_disconnect(&current_server);
+          client_disconnect(&current_server, current_client);
         else
           printf("You are not connected to a server!\n");
       }
@@ -186,7 +188,7 @@ int main(int argc, char *argv[]) {
         if(current_server > 0)
           printf("You are already connected to a server!\n");
         else
-          current_server = client_connect(command+strlen("/connect"));
+          client_connect(command+strlen("/connect"), &current_server, current_client);
       }
       else {
         printf("Unknown command!\n");
