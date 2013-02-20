@@ -220,10 +220,10 @@ int main(int argc, char *argv[]) {
   log_msg(msg, log_sem);
 
   while(1) {
-    repo_access_start(repo_id);
+    repo_access_start(repo_sem);
     receive_server_list_requests(repo, repo_sem);
     receive_login_requests(repo);
-    repo_access_stop(repo_id);
+    repo_access_stop(repo_sem);
   }
 
   repo_release(repo, repo_sem, log_sem);
