@@ -38,12 +38,43 @@ void client_help() {
   printf("LOCALCHAT MANUAL:\n");
   printf("/help to show these instructions\n");
   printf("/servers to list available servers\n");
+  printf("/connect <server_id> <login> to login on server\n");
   printf("/exit to quit\n");
 }
 
 void client_list_servers() {
   SERVER_LIST_RESPONSE servers;
   server_list(&servers);
+}
+
+void client_connect(char *command) {
+  int i = 0;
+  char server_id[100], client_name[MAX_NAME_SIZE];
+  int server_id_size = 0, client_id_size = 0;
+  for(i; i < strlen(command); i++) {
+    if(' ' != command[i]) break;
+  }
+  for(i; i < strlen(command); i++) {
+    if(' ' == command[i]) break;
+    server_id[server_id_size] = command[i];
+    server_id_size++;
+  }
+  server_id[server_id_size] = '\0';
+  for(i; i < strlen(command); i++) {
+    if(' ' != command[i]) break;
+  }
+  for(i; i < strlen(command); i++) {
+    client_name[client_id_size] = command[i];
+    client_id_size++;
+  }
+  client_name[client_id_size] = '\0';
+  if(0 == strlen(server_id) || 0 == strlen(client_name)) {
+    printf("Incorrect syntax!\n");
+    printf("/connect <server_id> <login> to login on server\n");
+  }
+  else {
+    printf("Attempting client %s connection to server %s\n", client_name, server_id);
+  }
 }
 
 void client_exit() {
@@ -83,7 +114,7 @@ int main(int argc, char *argv[]) {
 
   while(1) {
     printf("> ");
-    scanf("%s", command);
+    gets(command);
     if(str_startswith(command, "/")) {
       if(str_equal(command, "/help")) {
         client_help();
@@ -93,6 +124,9 @@ int main(int argc, char *argv[]) {
       }
       else if(str_equal(command, "/exit")) {
         client_exit();
+      }
+      else if(str_startswith(command, "/connect")) {
+        client_connect(command+strlen("/connect"));
       }
       else {
         printf("Unknown command!\n");
