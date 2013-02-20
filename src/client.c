@@ -118,7 +118,24 @@ void client_connect(char *command, int *current_server, char *current_client) {
 void client_change_room(char *command, int *current_server, char *current_client) {
   char room_id[MAX_NAME_SIZE];
   strcpy(room_id, command);
-  printf("Joining room %s...\n", room_id);
+  printf("Joining room \"%s\"...\n", room_id);
+  int server_msgq = server_queue(*current_server);
+  if(-1 != server_msgq) {
+    CHANGE_ROOM_REQUEST request;
+    request.type = CHANGE_ROOM;
+    request.client_msgid = getpid();
+    strcpy(request.client_name, current_client);
+    strcpy(request.room_name, room_id);
+    msgsnd(server_msgq, &request, sizeof(request), 0);
+    STATUS_RESPONSE response;
+    msgrcv(client_queue(), &response, sizeof(response), CHANGE_ROOM, 0);
+    if(RESPONSE_CHANGED_ROOM == response.status) {
+      printf("Now chatting in \"%s\"\n", room_id);
+    }
+    else {
+      printf("ERROR!\n");
+    }
+  }
 }
 
 void client_disconnect(int *server_id, char *current_client) {
@@ -195,11 +212,11 @@ int main(int argc, char *argv[]) {
         if(current_server > 0)
           printf("You are already connected to a server!\n");
         else
-          client_connect(command+strlen("/connect "), &current_server, current_client);
+          client_connect(command+strlen("/connect"), &current_server, current_client);
       }
-      else if(str_startswith(command, "/join")) {
+      else if(str_startswith(command, "/join ")) {
         if(current_server > 0)
-          client_change_room(command+strlen("/join"), &current_server, current_client);
+          client_change_room(command+strlen("/join "), &current_server, current_client);
         else
           printf("You are not connected to a server!\n");
       }

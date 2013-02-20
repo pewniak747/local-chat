@@ -95,6 +95,16 @@ void client_sort(REPO *repo) {
   qsort(repo->clients, MAX_CLIENTS, sizeof(CLIENT), client_compare);
 }
 
+int room_compare(const void *r1, const void *r2) {
+  char *r1id = ((ROOM*)r1)->name;
+  char *r2id = ((ROOM*)r2)->name;
+  return strcmp(r1id, r2id);
+}
+
+void room_sort(REPO *repo) {
+  qsort(repo->rooms, MAX_CLIENTS, sizeof(ROOM), room_compare);
+}
+
 ROOM* room_get(REPO *repo, char *name) {
   int i;
   for(i = 0; i < MAX_CLIENTS; i++) {
@@ -177,6 +187,7 @@ int repo_mem_init(int repo_sem) {
     for(i = 0; i < MAX_CLIENTS; i++) {
       strcpy(repo.clients[i].name, "");
       strcpy(repo.rooms[i].name, "");
+      repo.rooms[i].clients = 0;
     }
     *mem = repo;
     shmdt(mem);
@@ -257,6 +268,43 @@ void receive_login_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void receive_change_room_requests(REPO *repo, int repo_sem) {
+  CHANGE_ROOM_REQUEST request;
+  int msgq_id = msgget(getpid(), 0666);
+  int result = msgrcv(msgq_id, &request, sizeof(request), CHANGE_ROOM, IPC_NOWAIT);
+  if(-1 != result) {
+    STATUS_RESPONSE response;
+    response.type = CHANGE_ROOM;
+    CLIENT *client = client_get(repo, request.client_name);
+    if(NULL != client) {
+      ROOM *old_room = room_get(repo, client->room);
+      ROOM *new_room = room_get(repo, request.room_name);
+      if(NULL == new_room) {
+        new_room = &repo->rooms[repo->active_rooms];
+        strcpy(new_room->name, request.room_name);
+        new_room->clients = 0;
+        repo->active_rooms++;
+        room_sort(repo);
+      }
+      old_room->clients--;
+      if(old_room->clients == 0) {
+         strcpy(old_room->name, "");
+         repo->active_rooms--;
+         room_sort(repo);
+      }
+      room_sort(repo);
+      new_room->clients++;
+      strcpy(client->room, new_room->name);
+      response.status = RESPONSE_CHANGED_ROOM;
+    }
+    else {
+      response.status = RESPONSE_ERROR;
+    }
+    int client_msgq_id = msgget(request.client_msgid, 0666);
+    msgsnd(client_msgq_id, &response, sizeof(response), 0);
+  }
+}
+
 void receive_logout_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
@@ -304,6 +352,7 @@ int main(int argc, char *argv[]) {
     receive_server_list_requests(repo, repo_sem);
     receive_login_requests(repo, repo_sem);
     receive_logout_requests(repo, repo_sem);
+    receive_change_room_requests(repo, repo_sem);
     repo_access_stop(repo_sem);
   }
 
