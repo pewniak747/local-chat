@@ -184,14 +184,27 @@ void receive_server_list_requests(REPO *repo, int repo_sem) {
   }
 }
 
-void receive_login_requests(REPO *repo) {
+void receive_login_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
   int result = msgrcv(msgq_id, &request, sizeof(request), LOGIN, IPC_NOWAIT);
   if(-1 != result) {
     STATUS_RESPONSE response;
     response.type = STATUS;
-    response.status = 1337;
+    SERVER *me;
+    int i;
+    for(i = 0; i < MAX_SERVER_NUM; i++) {
+      if(repo->servers[i].client_msgid == getpid())  {
+        me = &repo->servers[i];
+        break;
+      }
+    }
+    if(me->clients == SERVER_CAPACITY) {
+      response.status = 503;
+    }
+    else {
+      response.status = 500;
+    }
     int client_msgq_id = msgget(request.client_msgid, 0666);
     msgsnd(client_msgq_id, &response, sizeof(response), 0);
   }
@@ -222,7 +235,7 @@ int main(int argc, char *argv[]) {
   while(1) {
     repo_access_start(repo_sem);
     receive_server_list_requests(repo, repo_sem);
-    receive_login_requests(repo);
+    receive_login_requests(repo, repo_sem);
     repo_access_stop(repo_sem);
   }
 
