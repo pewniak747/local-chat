@@ -381,6 +381,16 @@ void receive_list_room_clients_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void receive_public_messages(REPO *repo, int repo_sem) {
+  TEXT_MESSAGE request;
+  int msgq_id = msgget(getpid(), 0666);
+  int result = msgrcv(msgq_id, &request, sizeof(request), PUBLIC, IPC_NOWAIT);
+  if(-1 != result) {
+    // TODO: implement
+    printf("RECEIVED MESSAGE %s\n", request.text);
+  }
+}
+
 void receive_logout_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
@@ -433,6 +443,7 @@ int main(int argc, char *argv[]) {
     receive_list_room_requests(repo, repo_sem);
     receive_list_global_clients_requests(repo, repo_sem);
     receive_list_room_clients_requests(repo, repo_sem);
+    receive_public_messages(repo, repo_sem);
     repo_access_stop(repo_sem);
   }
 

@@ -224,6 +224,21 @@ void client_exit() {
   exit(0);
 }
 
+void client_message_send(char *message, int server_id, char *current_client) {
+  int server_msgq = server_queue(server_id);
+  if(MAX_MSG_SIZE < strlen(message)) {
+    printf("Message too long!\n");
+  }
+  else if(-1 != server_msgq) {
+    TEXT_MESSAGE request;
+    request.type = PUBLIC;
+    request.from_id = getpid();
+    strcpy(request.from_name, current_client);
+    strcpy(request.text, message);
+    msgsnd(server_msgq, &request, sizeof(request), 0);
+  }
+}
+
 int str_equal(char *a, char *b) {
   if(0 == strcmp(a, b))
     return 1;
@@ -296,7 +311,8 @@ void client_ui() {
       }
     }
     else {
-      // send message
+      if(client_connected(current_server))
+        client_message_send(command, current_server, current_client);
     }
   }
 }
