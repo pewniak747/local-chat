@@ -261,6 +261,15 @@ void client_room_leave(REPO *repo, CLIENT *client, char *room_name) {
   strcpy(client->room, EMPTY_ROOM);
 }
 
+int name_valid(char *name) {
+  if(strlen(name) > MAX_NAME_SIZE) return 0;
+  int valid_name = 1, i;
+  for(i = 0; i < strlen(name); i++) {
+    if(1 == valid_name && 0 == isprint(name[i])) valid_name = 0;
+  }
+  return valid_name;
+}
+
 void receive_login_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
@@ -269,14 +278,10 @@ void receive_login_requests(REPO *repo, int repo_sem) {
     STATUS_RESPONSE response;
     response.type = STATUS;
     SERVER *me = server_get(repo);
-    int valid_name = 1, i;
-    for(i = 0; i < strlen(request.client_name); i++) {
-      if(1 == valid_name && 0 == isprint(request.client_name[i])) valid_name = 0;
-    }
     if(me->clients == SERVER_CAPACITY) {
       response.status = RESPONSE_SERVER_FULL;
     }
-    else if(0 == valid_name || strlen(request.client_name) > MAX_NAME_SIZE) {
+    else if(!name_valid(request.client_name)) {
       response.status = RESPONSE_INVALID;
     }
     else if('\0' != client_get(repo, request.client_name)) {
@@ -308,11 +313,7 @@ void receive_change_room_requests(REPO *repo, int repo_sem) {
     STATUS_RESPONSE response;
     response.type = CHANGE_ROOM;
     CLIENT *client = client_get(repo, request.client_name);
-    int valid_name = 1, i;
-    for(i = 0; i < strlen(request.room_name); i++) {
-      if(1 == valid_name && 0 == isprint(request.room_name[i])) valid_name = 0;
-    }
-    if(0 == valid_name || strlen(request.room_name) > MAX_NAME_SIZE) {
+    if(!name_valid(request.room_name)) {
       response.status = RESPONSE_INVALID;
     }
     else if('\0' != client) {
