@@ -261,8 +261,8 @@ int main(int argc, char *argv[]) {
   char *command = malloc(100*sizeof(char));
 
   while(1) {
-    printf("> ");
-    gets(command);
+    fgets(command, 10 + MAX_MSG_SIZE, stdin);
+    command[strlen(command)-1] = '\0';
     if(str_startswith(command, "/")) {
       if(str_equal(command, "/help")) {
         client_help();
