@@ -7,7 +7,7 @@
 
 #include "common.h"
 
-int child_pid = -1;
+int child_pid = -1, client_pid = -1;
 
 int server_list(SERVER_LIST_RESPONSE *servers) {
   int msgq_id, my_msgq_id;
@@ -61,7 +61,7 @@ int server_queue(int server_key) {
 }
 
 int client_queue() {
-  return msgget(getpid(), 0666 | IPC_CREAT);
+  return msgget(client_pid, 0666 | IPC_CREAT);
 }
 
 void client_list_rooms(int *current_server, char *current_client) {
@@ -239,6 +239,14 @@ void client_message_send(char *message, int server_id, char *current_client) {
   }
 }
 
+void client_receive_public_messages() {
+  TEXT_MESSAGE message;
+  int result = msgrcv(client_queue(), &message, sizeof(message), PUBLIC, IPC_NOWAIT);
+  if(-1 != result) {
+    printf("> %s says: %s\n", message.from_name, message.text);
+  }
+}
+
 int str_equal(char *a, char *b) {
   if(0 == strcmp(a, b))
     return 1;
@@ -318,10 +326,13 @@ void client_ui() {
 }
 
 void client_receive() {
-  while(1) {}
+  while(1) {
+    client_receive_public_messages();
+  }
 }
 
 int main(int argc, char *argv[]) {
+  client_pid = getpid();
   signal(SIGINT, client_release);
   signal(SIGTERM, client_release);
 

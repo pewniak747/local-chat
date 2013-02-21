@@ -219,6 +219,10 @@ int repo_mem_init(int repo_sem) {
       strcpy(repo.rooms[i].name, EMPTY_ROOM);
       repo.rooms[i].clients = 0;
     }
+    for(i = 0; i < SERVER_CAPACITY; i++) {
+      local_clients[i].client_msgid = -1;
+      strcpy(local_clients[i].name, EMPTY_CLIENT);
+    }
     *mem = repo;
     shmdt(mem);
     sem_raise(repo_sem);
@@ -421,11 +425,14 @@ void receive_public_messages(REPO *repo, int repo_sem) {
     memcpy(&response, &request, sizeof(TEXT_MESSAGE));
     response.from_id = 0;
     response.time = time(0);
-    CLIENT *client = client_get(repo, request.from_name);
+    SERVER *me = server_get(repo);
+    CLIENT *sender = client_get(repo, request.from_name);
     int i;
-    for(i = 0; i < repo->active_clients; i++) {
-      if(repo->clients[i].server_id == getpid() && 0 == strcmp(repo->clients[i].room, client->room)) {
-        // TODO: send to local clients
+    for(i = 0; i < me->clients; i++) {
+      CLIENT *client = client_get(repo, local_clients[i].name);
+      if(0 == strcmp(client->room, sender->room)) {
+        int client_msgq = msgget(local_clients[i].client_msgid, 0666);
+        msgsnd(client_msgq, &response, sizeof(response), 0);
       }
     }
   }
