@@ -139,6 +139,9 @@ void client_connect(char *command, int *current_server, char *current_client) {
     printf("Incorrect syntax!\n");
     printf("/connect <server_id> <login> to login on server\n");
   }
+  else if(strlen(client_name) > MAX_NAME_SIZE) {
+    printf("Name too long!\n");
+  }
   else {
     printf("Connecting to %s as %s...\n", server_id, client_name);
     int server_key = atoi(server_id);
@@ -156,6 +159,9 @@ void client_connect(char *command, int *current_server, char *current_client) {
       }
       else if(RESPONSE_CLIENT_EXISTS == response.status) {
         printf("Client with name %s already exists!\n", client_name);
+      }
+      else if(RESPONSE_CLIENT_INVALID == response.status) {
+        printf("Invalid name!\n");
       }
       else if(RESPONSE_CLIENT_REGISTERED == response.status) {
         printf("Logged in successfully!\n");

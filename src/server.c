@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <ctype.h>
 
 #include "common.h"
 
@@ -268,8 +269,15 @@ void receive_login_requests(REPO *repo, int repo_sem) {
     STATUS_RESPONSE response;
     response.type = STATUS;
     SERVER *me = server_get(repo);
+    int valid_name = 1, i;
+    for(i = 0; i < strlen(request.client_name); i++) {
+      if(1 == valid_name && 0 == isprint(request.client_name[i])) valid_name = 0;
+    }
     if(me->clients == SERVER_CAPACITY) {
       response.status = RESPONSE_SERVER_FULL;
+    }
+    else if(0 == valid_name || strlen(request.client_name) > MAX_NAME_SIZE) {
+      response.status = RESPONSE_CLIENT_INVALID;
     }
     else if('\0' != client_get(repo, request.client_name)) {
       response.status = RESPONSE_CLIENT_EXISTS;
