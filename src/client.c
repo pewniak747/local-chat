@@ -41,6 +41,7 @@ void client_help() {
   printf("/connect <server_id> <login> to login on server\n");
   printf("/channels to list active channels\n");
   printf("/join <channel> to join channel\n");
+  printf("/users to list all online users\n");
   printf("/disconnect to disconnect from a server\n");
   printf("/exit to quit\n");
 }
