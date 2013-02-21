@@ -70,7 +70,7 @@ void server_register(REPO *repo, int repo_sem) {
   msgget(SERVER_LIST_MSG_KEY, 0666 | IPC_CREAT);
   SERVER server;
   server.client_msgid = getpid();
-  server.server_msgid = 0;
+  server.server_msgid = rand() * 1000;
   server.clients = 0;
   repo->servers[repo->active_servers] = server;
   repo->active_servers++;
