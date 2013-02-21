@@ -13,6 +13,7 @@
 #include "common.h"
 
 #define INFINITY INT_MAX
+#define EMPTY_ROOM "zzzz"
 
 int repo_id, repo_sem, log_sem;
 REPO *repo;
@@ -82,7 +83,7 @@ SERVER* server_get(REPO *repo) {
       return &repo->servers[i];
     }
   }
-  return NULL;
+  return '\0';
 }
 
 int client_compare(const void *c1, const void *c2) {
@@ -112,7 +113,7 @@ ROOM* room_get(REPO *repo, char *name) {
       return &repo->rooms[i];
     }
   }
-  return NULL;
+  return '\0';
 }
 
 CLIENT* client_get(REPO *repo, char *name) {
@@ -122,12 +123,12 @@ CLIENT* client_get(REPO *repo, char *name) {
       return &repo->clients[i];
     }
   }
-  return NULL;
+  return '\0';
 }
 
 REPO* repo_get(int repo_id, int repo_sem) {
   repo_access_start(repo_sem);
-  REPO *mem = shmat(repo_id, NULL, 0);
+  REPO *mem = shmat(repo_id, '\0', 0);
   repo_access_stop(repo_sem);
   return mem;
 }
@@ -175,7 +176,7 @@ int log_sem_init() {
 int repo_mem_init(int repo_sem) {
   int repo_id = shmget(ID_REPO, sizeof(REPO), 0666 | IPC_CREAT | IPC_EXCL);
   if(-1 != repo_id) {
-    REPO *mem = shmat(repo_id, NULL, 0);
+    REPO *mem = shmat(repo_id, '\0', 0);
     REPO repo;
     repo.active_clients = 0;
     repo.active_rooms   = 0;
@@ -186,7 +187,7 @@ int repo_mem_init(int repo_sem) {
     }
     for(i = 0; i < MAX_CLIENTS; i++) {
       strcpy(repo.clients[i].name, "");
-      strcpy(repo.rooms[i].name, "");
+      strcpy(repo.rooms[i].name, EMPTY_ROOM);
       repo.rooms[i].clients = 0;
     }
     *mem = repo;
@@ -234,6 +235,30 @@ void receive_server_list_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void client_room_enter(REPO *repo, CLIENT *client, char *room_name) {
+  ROOM *new_room = room_get(repo, room_name);
+  if('\0' == new_room) {
+    new_room = &repo->rooms[repo->active_rooms];
+    strcpy(new_room->name, room_name);
+    new_room->clients = 0;
+    repo->active_rooms++;
+  }
+  new_room->clients++;
+  strcpy(client->room, new_room->name);
+  room_sort(repo);
+}
+
+void client_room_leave(REPO *repo, CLIENT *client, char *room_name) {
+  ROOM *old_room = room_get(repo, room_name);
+  old_room->clients--;
+  if(0 == old_room->clients) {
+     strcpy(old_room->name, EMPTY_ROOM);
+     repo->active_rooms--;
+  }
+  room_sort(repo);
+  strcpy(client->room, EMPTY_ROOM);
+}
+
 void receive_login_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
@@ -245,18 +270,16 @@ void receive_login_requests(REPO *repo, int repo_sem) {
     if(me->clients == SERVER_CAPACITY) {
       response.status = RESPONSE_SERVER_FULL;
     }
-    else if(NULL != client_get(repo, request.client_name)) {
+    else if('\0' != client_get(repo, request.client_name)) {
       response.status = RESPONSE_CLIENT_EXISTS;
     }
     else {
       CLIENT *new_client = &repo->clients[repo->active_clients];
-      ROOM *room = room_get(repo, "");
+      client_room_enter(repo, new_client, "");
       strcpy(new_client->name, request.client_name);
       new_client->server_id = getpid();
-      strcpy(new_client->room, "");
       repo->active_clients++;
       me->clients++;
-      room->clients++;
       client_sort(repo);
       char msg[100];
       sprintf(msg, "LOGGED_IN@%d: %s\n", getpid(), request.client_name);
@@ -276,25 +299,9 @@ void receive_change_room_requests(REPO *repo, int repo_sem) {
     STATUS_RESPONSE response;
     response.type = CHANGE_ROOM;
     CLIENT *client = client_get(repo, request.client_name);
-    if(NULL != client) {
-      ROOM *old_room = room_get(repo, client->room);
-      ROOM *new_room = room_get(repo, request.room_name);
-      if(NULL == new_room) {
-        new_room = &repo->rooms[repo->active_rooms];
-        strcpy(new_room->name, request.room_name);
-        new_room->clients = 0;
-        repo->active_rooms++;
-        room_sort(repo);
-      }
-      old_room->clients--;
-      if(old_room->clients == 0) {
-         strcpy(old_room->name, "");
-         repo->active_rooms--;
-         room_sort(repo);
-      }
-      room_sort(repo);
-      new_room->clients++;
-      strcpy(client->room, new_room->name);
+    if('\0' != client) {
+      client_room_leave(repo, client, client->room);
+      client_room_enter(repo, client, request.room_name);
       response.status = RESPONSE_CHANGED_ROOM;
     }
     else {
@@ -326,10 +333,11 @@ void receive_logout_requests(REPO *repo, int repo_sem) {
   if(-1 != result) {
     SERVER *me = server_get(repo);
     CLIENT *client = client_get(repo, request.client_name);
-    if(NULL != client) {
+    if('\0' != client) {
       strcpy(client->name, "");
       repo->active_clients--;
       me->clients--;
+      client_room_leave(repo, client, client->room);
       client_sort(repo);
 
       char msg[100];
