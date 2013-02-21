@@ -277,7 +277,7 @@ void receive_login_requests(REPO *repo, int repo_sem) {
       response.status = RESPONSE_SERVER_FULL;
     }
     else if(0 == valid_name || strlen(request.client_name) > MAX_NAME_SIZE) {
-      response.status = RESPONSE_CLIENT_INVALID;
+      response.status = RESPONSE_INVALID;
     }
     else if('\0' != client_get(repo, request.client_name)) {
       response.status = RESPONSE_CLIENT_EXISTS;
@@ -308,7 +308,14 @@ void receive_change_room_requests(REPO *repo, int repo_sem) {
     STATUS_RESPONSE response;
     response.type = CHANGE_ROOM;
     CLIENT *client = client_get(repo, request.client_name);
-    if('\0' != client) {
+    int valid_name = 1, i;
+    for(i = 0; i < strlen(request.room_name); i++) {
+      if(1 == valid_name && 0 == isprint(request.room_name[i])) valid_name = 0;
+    }
+    if(0 == valid_name || strlen(request.room_name) > MAX_NAME_SIZE) {
+      response.status = RESPONSE_INVALID;
+    }
+    else if('\0' != client) {
       client_room_leave(repo, client, client->room);
       client_room_enter(repo, client, request.room_name);
       response.status = RESPONSE_CHANGED_ROOM;

@@ -160,7 +160,7 @@ void client_connect(char *command, int *current_server, char *current_client) {
       else if(RESPONSE_CLIENT_EXISTS == response.status) {
         printf("Client with name %s already exists!\n", client_name);
       }
-      else if(RESPONSE_CLIENT_INVALID == response.status) {
+      else if(RESPONSE_INVALID == response.status) {
         printf("Invalid name!\n");
       }
       else if(RESPONSE_CLIENT_REGISTERED == response.status) {
