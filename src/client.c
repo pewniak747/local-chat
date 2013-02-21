@@ -3,8 +3,11 @@
 #include <sys/msg.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 
 #include "common.h"
+
+int child_pid = -1;
 
 int server_list(SERVER_LIST_RESPONSE *servers) {
   int msgq_id, my_msgq_id;
@@ -30,6 +33,7 @@ int server_list(SERVER_LIST_RESPONSE *servers) {
 }
 
 void client_release() {
+  kill(child_pid, SIGKILL);
   int msgq_id = msgget(getpid(), 0666);
   msgctl(msgq_id, IPC_RMID, 0);
 }
@@ -242,23 +246,10 @@ int client_connected(current_server) {
   else return 1;
 }
 
-int main(int argc, char *argv[]) {
+void client_ui() {
   int current_server;
   char current_client[MAX_NAME_SIZE];
-
-  signal(SIGINT, client_release);
-  signal(SIGTERM, client_release);
-
-  printf("WELCOME TO LOCALCHAT\n");
-  SERVER_LIST_RESPONSE servers;
-  int server_status = server_list(&servers);
-  if(-1 == server_status) {
-    printf("Sorry, no server online...\n");
-    printf("Exiting...\n");
-    exit(1);
-  }
-
-  char *command = malloc(100*sizeof(char));
+  char *command = malloc((10+MAX_MSG_SIZE)*sizeof(char));
 
   while(1) {
     fgets(command, 10 + MAX_MSG_SIZE, stdin);
@@ -307,6 +298,32 @@ int main(int argc, char *argv[]) {
     else {
       // send message
     }
+  }
+}
+
+void client_receive() {
+  while(1) {}
+}
+
+int main(int argc, char *argv[]) {
+  signal(SIGINT, client_release);
+  signal(SIGTERM, client_release);
+
+  printf("WELCOME TO LOCALCHAT\n");
+  SERVER_LIST_RESPONSE servers;
+  int server_status = server_list(&servers);
+  if(-1 == server_status) {
+    printf("Sorry, no server online...\n");
+    printf("Exiting...\n");
+    exit(1);
+  }
+
+  child_pid = fork();
+  if(child_pid > 0) {
+    client_ui();
+  }
+  else {
+    client_receive();
   }
 
   client_release();
