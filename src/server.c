@@ -14,6 +14,7 @@
 
 #define INFINITY INT_MAX
 #define EMPTY_ROOM "zzzz"
+#define EMPTY_CLIENT "zzzz"
 
 int repo_id, repo_sem, log_sem;
 REPO *repo;
@@ -186,7 +187,7 @@ int repo_mem_init(int repo_sem) {
       repo.servers[i].client_msgid = INFINITY;
     }
     for(i = 0; i < MAX_CLIENTS; i++) {
-      strcpy(repo.clients[i].name, "");
+      strcpy(repo.clients[i].name, EMPTY_CLIENT);
       strcpy(repo.rooms[i].name, EMPTY_ROOM);
       repo.rooms[i].clients = 0;
     }
@@ -326,6 +327,23 @@ void receive_list_room_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void receive_list_global_clients_requests(REPO *repo, int repo_sem) {
+  CLIENT_REQUEST request;
+  int msgq_id = msgget(getpid(), 0666);
+  int result = msgrcv(msgq_id, &request, sizeof(request), GLOBAL_CLIENT_LIST, IPC_NOWAIT);
+  if(-1 != result) {
+    CLIENT_LIST_RESPONSE response;
+    response.type = GLOBAL_CLIENT_LIST;
+    response.active_clients = repo->active_clients;
+    int i;
+    for(i = 0; i < repo->active_clients; i++) {
+      strcpy(response.names[i], repo->clients[i].name);
+    }
+    int client_msgq_id = msgget(request.client_msgid, 0666);
+    msgsnd(client_msgq_id, &response, sizeof(response), 0);
+  }
+}
+
 void receive_logout_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
@@ -334,7 +352,7 @@ void receive_logout_requests(REPO *repo, int repo_sem) {
     SERVER *me = server_get(repo);
     CLIENT *client = client_get(repo, request.client_name);
     if('\0' != client) {
-      strcpy(client->name, "");
+      strcpy(client->name, EMPTY_CLIENT);
       repo->active_clients--;
       me->clients--;
       client_room_leave(repo, client, client->room);
@@ -376,6 +394,7 @@ int main(int argc, char *argv[]) {
     receive_logout_requests(repo, repo_sem);
     receive_change_room_requests(repo, repo_sem);
     receive_list_room_requests(repo, repo_sem);
+    receive_list_global_clients_requests(repo, repo_sem);
     repo_access_stop(repo_sem);
   }
 

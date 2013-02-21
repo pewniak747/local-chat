@@ -76,6 +76,24 @@ void client_list_rooms(int *current_server, char *current_client) {
   }
 }
 
+void client_list_global_clients(int *current_server, char *current_client) {
+  int server_msgq = server_queue(*current_server);
+  if(-1 != server_msgq) {
+    CLIENT_REQUEST request;
+    request.type = GLOBAL_CLIENT_LIST;
+    request.client_msgid = getpid();
+    strcpy(request.client_name, current_client);
+    msgsnd(server_msgq, &request, sizeof(request), 0);
+    CLIENT_LIST_RESPONSE response;
+    msgrcv(client_queue(), &response, sizeof(response), GLOBAL_CLIENT_LIST, 0);
+    printf("%d users online\n", response.active_clients);
+    int i;
+    for(i = 0; i < response.active_clients; i++) {
+      printf("* %s\n", response.names[i]);
+    }
+  }
+}
+
 void client_connect(char *command, int *current_server, char *current_client) {
   int i = 0;
   char server_id[100], client_name[MAX_NAME_SIZE];
@@ -242,6 +260,12 @@ int main(int argc, char *argv[]) {
       else if(str_equal(command, "/channels")) {
         if(current_server > 0)
           client_list_rooms(&current_server, current_client);
+        else
+          printf("You are not connected to a server!\n");
+      }
+      else if(str_equal(command, "/users")) {
+        if(current_server > 0)
+          client_list_global_clients(&current_server, current_client);
         else
           printf("You are not connected to a server!\n");
       }

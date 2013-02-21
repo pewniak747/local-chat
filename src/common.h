@@ -24,7 +24,8 @@
 typedef enum {
   SERVER_LIST = 1
     ,ROOM_LIST
-    ,CLIENT_LIST
+    ,ROOM_CLIENT_LIST
+    ,GLOBAL_CLIENT_LIST
     ,LOGIN
     ,LOGOUT
     ,STATUS
@@ -72,7 +73,7 @@ typedef struct{
 typedef struct{
   long type;
   int active_clients;
-  char names[MAX_NAME_SIZE][MAX_CLIENTS];
+  char names[MAX_CLIENTS][MAX_NAME_SIZE];
 } CLIENT_LIST_RESPONSE;
 
 typedef struct{
