@@ -228,6 +228,14 @@ int str_startswith(char *a, char *b) {
     return 0;
 }
 
+int client_connected(current_server) {
+  if(!(current_server > 0)) {
+    printf("You are not connected to a server!\n");
+    return 0;
+  }
+  else return 1;
+}
+
 int main(int argc, char *argv[]) {
   int current_server;
   char current_client[MAX_NAME_SIZE];
@@ -260,10 +268,8 @@ int main(int argc, char *argv[]) {
         client_exit();
       }
       else if(str_equal(command, "/disconnect")) {
-        if(current_server > 0)
+        if(client_connected(current_server))
           client_disconnect(&current_server, current_client);
-        else
-          printf("You are not connected to a server!\n");
       }
       else if(str_startswith(command, "/connect")) {
         if(current_server > 0)
@@ -272,28 +278,20 @@ int main(int argc, char *argv[]) {
           client_connect(command+strlen("/connect"), &current_server, current_client);
       }
       else if(str_startswith(command, "/join ")) {
-        if(current_server > 0)
+        if(client_connected(current_server))
           client_change_room(command+strlen("/join "), &current_server, current_client);
-        else
-          printf("You are not connected to a server!\n");
       }
       else if(str_equal(command, "/channels")) {
-        if(current_server > 0)
+        if(client_connected(current_server))
           client_list_rooms(&current_server, current_client);
-        else
-          printf("You are not connected to a server!\n");
       }
       else if(str_equal(command, "/users")) {
-        if(current_server > 0)
+        if(client_connected(current_server))
           client_list_global_clients(&current_server, current_client);
-        else
-          printf("You are not connected to a server!\n");
       }
       else if(str_equal(command, "/whosthere")) {
-        if(current_server > 0)
+        if(client_connected(current_server))
           client_list_room_clients(&current_server, current_client);
-        else
-          printf("You are not connected to a server!\n");
       }
       else {
         printf("Unknown command!\n");
