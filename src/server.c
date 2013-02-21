@@ -13,12 +13,18 @@
 
 #include "common.h"
 
+typedef struct {
+  char name[MAX_NAME_SIZE];
+  int client_msgid;
+} LOCAL_CLIENT;
+
 #define INFINITY INT_MAX
 #define EMPTY_ROOM "zzzz"
 #define EMPTY_CLIENT "zzzz"
 
 int repo_id, repo_sem, log_sem;
 REPO *repo;
+LOCAL_CLIENT local_clients[SERVER_CAPACITY];
 
 void sem_lower(int sem_id) {
   struct sembuf buf;
@@ -66,12 +72,13 @@ void server_sort(REPO *repo) {
 
 void server_register(REPO *repo, int repo_sem) {
   repo_access_start(repo_sem);
-  msgget(getpid(), 0666 | IPC_CREAT);
   msgget(SERVER_LIST_MSG_KEY, 0666 | IPC_CREAT);
   SERVER server;
   server.client_msgid = getpid();
   server.server_msgid = rand() * 1000;
   server.clients = 0;
+  msgget(server.client_msgid, 0666 | IPC_CREAT);
+  msgget(server.server_msgid, 0666 | IPC_CREAT);
   repo->servers[repo->active_servers] = server;
   repo->active_servers++;
   server_sort(repo);
@@ -96,6 +103,16 @@ int client_compare(const void *c1, const void *c2) {
 
 void client_sort(REPO *repo) {
   qsort(repo->clients, MAX_CLIENTS, sizeof(CLIENT), client_compare);
+}
+
+int local_client_compare(const void *c1, const void *c2) {
+  char *c1id = ((LOCAL_CLIENT*)c1)->name;
+  char *c2id = ((LOCAL_CLIENT*)c2)->name;
+  return strcmp(c1id, c2id);
+}
+
+void local_client_sort() {
+  qsort(local_clients, SERVER_CAPACITY, sizeof(LOCAL_CLIENT), local_client_compare);
 }
 
 int room_compare(const void *r1, const void *r2) {
@@ -123,6 +140,16 @@ CLIENT* client_get(REPO *repo, char *name) {
   for(i = 0; i < MAX_CLIENTS; i++) {
     if(0 == strcmp(repo->clients[i].name, name))  {
       return &repo->clients[i];
+    }
+  }
+  return '\0';
+}
+
+LOCAL_CLIENT* local_client_get(char *name) {
+  int i;
+  for(i = 0; i < SERVER_CAPACITY; i++) {
+    if(0 == strcmp(local_clients[i].name, name))  {
+      return &local_clients[i];
     }
   }
   return '\0';
@@ -289,12 +316,16 @@ void receive_login_requests(REPO *repo, int repo_sem) {
     }
     else {
       CLIENT *new_client = &repo->clients[repo->active_clients];
+      LOCAL_CLIENT *new_local_client = &local_clients[me->clients];
       client_room_enter(repo, new_client, "");
       strcpy(new_client->name, request.client_name);
+      strcpy(new_local_client->name, request.client_name);
       new_client->server_id = getpid();
+      new_local_client->client_msgid = request.client_msgid;
       repo->active_clients++;
       me->clients++;
       client_sort(repo);
+      local_client_sort();
       char msg[100];
       sprintf(msg, "LOGGED_IN@%d: %s\n", getpid(), request.client_name);
       log_msg(msg, log_sem);
@@ -386,6 +417,26 @@ void receive_public_messages(REPO *repo, int repo_sem) {
   int msgq_id = msgget(getpid(), 0666);
   int result = msgrcv(msgq_id, &request, sizeof(request), PUBLIC, IPC_NOWAIT);
   if(-1 != result) {
+    TEXT_MESSAGE response;
+    memcpy(&response, &request, sizeof(TEXT_MESSAGE));
+    response.from_id = 0;
+    response.time = time(0);
+    CLIENT *client = client_get(repo, request.from_name);
+    int i;
+    for(i = 0; i < repo->active_clients; i++) {
+      if(repo->clients[i].server_id == getpid() && 0 == strcmp(repo->clients[i].room, client->room)) {
+        // TODO: send to local clients
+      }
+    }
+  }
+}
+
+void receive_server_messages(REPO *repo, int repo_sem) {
+  TEXT_MESSAGE request;
+  SERVER *me = server_get(repo);
+  int msgq_id = msgget(me->server_msgid, 0666);
+  int result = msgrcv(msgq_id, &request, sizeof(request), PUBLIC, IPC_NOWAIT);
+  if(-1 != result) {
     // TODO: implement
     printf("RECEIVED MESSAGE %s\n", request.text);
   }
@@ -398,12 +449,15 @@ void receive_logout_requests(REPO *repo, int repo_sem) {
   if(-1 != result) {
     SERVER *me = server_get(repo);
     CLIENT *client = client_get(repo, request.client_name);
+    LOCAL_CLIENT *local_client = local_client_get(request.client_name);
     if('\0' != client) {
       strcpy(client->name, EMPTY_CLIENT);
+      strcpy(local_client->name, EMPTY_CLIENT);
       repo->active_clients--;
       me->clients--;
       client_room_leave(repo, client, client->room);
       client_sort(repo);
+      local_client_sort();
 
       char msg[100];
       sprintf(msg, "LOGGED_OUT@%d: %s\n", getpid(), request.client_name);
@@ -444,6 +498,7 @@ int main(int argc, char *argv[]) {
     receive_list_global_clients_requests(repo, repo_sem);
     receive_list_room_clients_requests(repo, repo_sem);
     receive_public_messages(repo, repo_sem);
+    receive_server_messages(repo, repo_sem);
     repo_access_stop(repo_sem);
   }
 
