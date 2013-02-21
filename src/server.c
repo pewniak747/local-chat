@@ -344,6 +344,27 @@ void receive_list_global_clients_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void receive_list_room_clients_requests(REPO *repo, int repo_sem) {
+  CLIENT_REQUEST request;
+  int msgq_id = msgget(getpid(), 0666);
+  int result = msgrcv(msgq_id, &request, sizeof(request), ROOM_CLIENT_LIST, IPC_NOWAIT);
+  if(-1 != result) {
+    CLIENT_LIST_RESPONSE response;
+    response.type = ROOM_CLIENT_LIST;
+    CLIENT *client = client_get(repo, request.client_name);
+    int clients = 0, i;
+    for(i = 0; i < repo->active_clients; i++) {
+      if(0 == strcmp(repo->clients[i].room, client->room)) {
+        strcpy(response.names[clients], repo->clients[i].name);
+        clients++;
+      }
+    }
+    response.active_clients = clients;
+    int client_msgq_id = msgget(request.client_msgid, 0666);
+    msgsnd(client_msgq_id, &response, sizeof(response), 0);
+  }
+}
+
 void receive_logout_requests(REPO *repo, int repo_sem) {
   CLIENT_REQUEST request;
   int msgq_id = msgget(getpid(), 0666);
@@ -395,6 +416,7 @@ int main(int argc, char *argv[]) {
     receive_change_room_requests(repo, repo_sem);
     receive_list_room_requests(repo, repo_sem);
     receive_list_global_clients_requests(repo, repo_sem);
+    receive_list_room_clients_requests(repo, repo_sem);
     repo_access_stop(repo_sem);
   }
 

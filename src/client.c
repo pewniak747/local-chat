@@ -42,6 +42,7 @@ void client_help() {
   printf("/channels to list active channels\n");
   printf("/join <channel> to join channel\n");
   printf("/users to list all online users\n");
+  printf("/whosthere to list users in your channel\n");
   printf("/disconnect to disconnect from a server\n");
   printf("/exit to quit\n");
 }
@@ -88,6 +89,24 @@ void client_list_global_clients(int *current_server, char *current_client) {
     CLIENT_LIST_RESPONSE response;
     msgrcv(client_queue(), &response, sizeof(response), GLOBAL_CLIENT_LIST, 0);
     printf("%d users online\n", response.active_clients);
+    int i;
+    for(i = 0; i < response.active_clients; i++) {
+      printf("* %s\n", response.names[i]);
+    }
+  }
+}
+
+void client_list_room_clients(int *current_server, char *current_client) {
+  int server_msgq = server_queue(*current_server);
+  if(-1 != server_msgq) {
+    CLIENT_REQUEST request;
+    request.type = ROOM_CLIENT_LIST;
+    request.client_msgid = getpid();
+    strcpy(request.client_name, current_client);
+    msgsnd(server_msgq, &request, sizeof(request), 0);
+    CLIENT_LIST_RESPONSE response;
+    msgrcv(client_queue(), &response, sizeof(response), ROOM_CLIENT_LIST, 0);
+    printf("%d users chatting here\n", response.active_clients);
     int i;
     for(i = 0; i < response.active_clients; i++) {
       printf("* %s\n", response.names[i]);
@@ -267,6 +286,12 @@ int main(int argc, char *argv[]) {
       else if(str_equal(command, "/users")) {
         if(current_server > 0)
           client_list_global_clients(&current_server, current_client);
+        else
+          printf("You are not connected to a server!\n");
+      }
+      else if(str_equal(command, "/whosthere")) {
+        if(current_server > 0)
+          client_list_room_clients(&current_server, current_client);
         else
           printf("You are not connected to a server!\n");
       }
