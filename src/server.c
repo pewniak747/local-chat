@@ -416,6 +416,18 @@ void receive_list_room_clients_requests(REPO *repo, int repo_sem) {
   }
 }
 
+void send_room_message(REPO *repo, int repo_sem, TEXT_MESSAGE *response, char *room_name) {
+  SERVER *me = server_get(repo);
+  int i;
+  for(i = 0; i < me->clients; i++) {
+    CLIENT *client = client_get(repo, local_clients[i].name);
+    if(0 == strcmp(client->room, room_name)) {
+      int client_msgq = msgget(local_clients[i].client_msgid, 0666);
+      msgsnd(client_msgq, response, sizeof(*response), 0);
+    }
+  }
+}
+
 void receive_public_messages(REPO *repo, int repo_sem) {
   TEXT_MESSAGE request;
   int msgq_id = msgget(getpid(), 0666);
@@ -425,16 +437,8 @@ void receive_public_messages(REPO *repo, int repo_sem) {
     memcpy(&response, &request, sizeof(TEXT_MESSAGE));
     response.from_id = 0;
     response.time = time(0);
-    SERVER *me = server_get(repo);
     CLIENT *sender = client_get(repo, request.from_name);
-    int i;
-    for(i = 0; i < me->clients; i++) {
-      CLIENT *client = client_get(repo, local_clients[i].name);
-      if(0 == strcmp(client->room, sender->room)) {
-        int client_msgq = msgget(local_clients[i].client_msgid, 0666);
-        msgsnd(client_msgq, &response, sizeof(response), 0);
-      }
-    }
+    send_room_message(repo, repo_sem, &response, sender->room);
   }
 }
 
