@@ -185,10 +185,12 @@ void repo_release(REPO *repo, int repo_sem, int log_sem) {
     shmctl(repo_id, IPC_RMID, 0);
   }
   else {
-    int msgq_id = msgget(getpid(), 0666);
-    msgctl(msgq_id, IPC_RMID, 0);
-    repo->active_servers--;
     SERVER *me = server_get(repo);
+    int client_msgq = msgget(me->client_msgid, 0666);
+    int server_msgq = msgget(me->server_msgid, 0666);
+    msgctl(client_msgq, IPC_RMID, 0);
+    msgctl(server_msgq, IPC_RMID, 0);
+    repo->active_servers--;
     me->client_msgid = INFINITY;
     server_sort(repo);
     shmdt(repo);
