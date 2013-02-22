@@ -75,10 +75,15 @@ void server_register(REPO *repo, int repo_sem) {
   msgget(SERVER_LIST_MSG_KEY, 0666 | IPC_CREAT);
   SERVER server;
   server.client_msgid = getpid();
-  server.server_msgid = rand() * 1000;
+  server.server_msgid = rand();
   server.clients = 0;
   msgget(server.client_msgid, 0666 | IPC_CREAT);
   msgget(server.server_msgid, 0666 | IPC_CREAT);
+  int i;
+  for(i = 0; i < SERVER_CAPACITY; i++) {
+    local_clients[i].client_msgid = -1;
+    strcpy(local_clients[i].name, EMPTY_CLIENT);
+  }
   repo->servers[repo->active_servers] = server;
   repo->active_servers++;
   server_sort(repo);
@@ -218,10 +223,6 @@ int repo_mem_init(int repo_sem) {
       strcpy(repo.clients[i].name, EMPTY_CLIENT);
       strcpy(repo.rooms[i].name, EMPTY_ROOM);
       repo.rooms[i].clients = 0;
-    }
-    for(i = 0; i < SERVER_CAPACITY; i++) {
-      local_clients[i].client_msgid = -1;
-      strcpy(local_clients[i].name, EMPTY_CLIENT);
     }
     *mem = repo;
     shmdt(mem);
@@ -439,17 +440,26 @@ void receive_public_messages(REPO *repo, int repo_sem) {
     response.time = time(0);
     CLIENT *sender = client_get(repo, request.from_name);
     send_room_message(repo, repo_sem, &response, sender->room);
+    int i;
+    response.from_id = getpid();
+    for(i = 0; i < repo->active_servers; i++) {
+      if(repo->servers[i].client_msgid != getpid()) {
+        int server_msgq = msgget(repo->servers[i].server_msgid, 0666);
+        msgsnd(server_msgq, &response, sizeof(response), PUBLIC);
+      }
+    }
   }
 }
 
 void receive_server_messages(REPO *repo, int repo_sem) {
-  TEXT_MESSAGE request;
+  TEXT_MESSAGE message;
   SERVER *me = server_get(repo);
   int msgq_id = msgget(me->server_msgid, 0666);
-  int result = msgrcv(msgq_id, &request, sizeof(request), PUBLIC, IPC_NOWAIT);
+  int result = msgrcv(msgq_id, &message, sizeof(message), PUBLIC, IPC_NOWAIT);
   if(-1 != result) {
-    // TODO: implement
-    printf("RECEIVED MESSAGE %s\n", request.text);
+    message.from_id = 0;
+    CLIENT *sender = client_get(repo, message.from_name);
+    send_room_message(repo, repo_sem, &message, sender->room);
   }
 }
 
@@ -483,6 +493,7 @@ void server_exit() {
 }
 
 int main(int argc, char *argv[]) {
+  srand(time(0));
   repo_init(&repo_id, &repo_sem, &log_sem);
 
   char msg[100];
