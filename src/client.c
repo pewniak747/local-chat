@@ -218,7 +218,9 @@ void client_disconnect(int *server_id, char *current_client) {
   }
 }
 
-void client_exit() {
+void client_exit(int *server_id, char *current_client) {
+  if(*server_id > 0)
+    client_disconnect(server_id, current_client);
   client_release();
   printf("Exiting...\n");
   exit(0);
@@ -285,7 +287,7 @@ void client_ui() {
         client_list_servers();
       }
       else if(str_equal(command, "/exit")) {
-        client_exit();
+        client_exit(&current_server, current_client);
       }
       else if(str_equal(command, "/disconnect")) {
         if(client_connected(current_server))
