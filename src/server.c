@@ -522,6 +522,7 @@ int main(int argc, char *argv[]) {
     receive_public_messages(repo, repo_sem);
     receive_server_messages(repo, repo_sem);
     repo_access_stop(repo_sem);
+    usleep(200);
   }
 
   repo_release(repo, repo_sem, log_sem);

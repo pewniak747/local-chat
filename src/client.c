@@ -328,6 +328,7 @@ void client_ui() {
 void client_receive() {
   while(1) {
     client_receive_public_messages();
+    usleep(200);
   }
 }
 
